@@ -1,170 +1,123 @@
-﻿#include <iostream>
-#include <string>
+#include <iostream>
 #include <fstream>
-#include <vector>
-#include <cmath>
+#include <string>
+#include "MyCryptoAlgoritm.h"
+
 using namespace std;
 
-void fill_blocks(vector<string>& vec, const string& text, unsigned int BlockSizeData) // заполнение для ровного делания и разхделдение на блоки по 16
-{
-    unsigned int a = 0;
-    unsigned int howManyBlocks = BlockSizeData - text.length() % BlockSizeData;
-    char randCh = rand() % 101;
-    string textChunk = text;
-    for (int i = 0; i < howManyBlocks; ++i)
-    {
-        textChunk += randCh;
-    }
-    for (int i = 0; i < textChunk.length() / BlockSizeData; ++i)
-    {
-        vec.push_back(textChunk.substr(a, BlockSizeData));
-        a += BlockSizeData;
-    }
-}
-void cryptedkey(unsigned int BlockSizeData, int& key, string& stringKey)
-{
-    key = 0;
-    int a;
-    for (int i = 0; i < BlockSizeData / 2; ++i)
-    {
-        a = rand() % 100;
-        key += key * 100 + a;
-        stringKey += static_cast<char>(a);
-    }
-}
+string ReadTextFromFile(char* path);
 
-string creatBinary(int i)
-{
-    string result;
-    while (i > 0)
-    {
-        result += to_string(i % 2);
-        i /= 2;
-    }
-    reverse(result.begin(), result.end());
-    while (result.length() % 8 != 0)
-    {
-        result = "0" + result;
-    }
-    return result;
-}
-string createByte(const string& str)
-{
-    string res;
-    for (const char& sym : str)
-    {
-        int num_sym = static_cast<unsigned char>(sym);
-        string bin = creatBinary(num_sym);
-        res += bin;
-    }
-    return res;
-}
+void WriteTextToFile(char* path, string text);
 
-int createDec(string& str)
-{
-    long long res = 0;
-    int count = 0;
-    while (str[0] == '0')
-    {
-        str.erase(0, 1);
-    }
-    while (!str.empty())
-    {
-        res += static_cast<long long>((str[str.length() - 1] - '0') * pow(2, count));
-        str.erase(str.length() - 1);
-        ++count;
-    }
-    return res;
-}
+bool FileIsExist(string filePath);
 
-void shifting(string& str, unsigned int ShiftSize, const string& leftOrRight)  //  сразу для кодирования и раскодирования
+const string decodeMode = "decode";
+const string encodeMode = "encode";
+
+int main(int argc, char* argv[])
 {
-    string result;
-    if (leftOrRight == ">>")
-    {
-        rotate(str.begin(), str.begin() + ShiftSize, str.end());
-    } else 
-    {
-        rotate(str.rbegin(), str.rbegin() + ShiftSize, str.rend());
-    }
-    while (!str.empty())
-    {
-        string add = str.substr(0, 8);
-        result += static_cast<char>(createDec(add));
-        str.erase(0, 8);
-    }
-    str = result;
+	setlocale(LC_ALL, "Russian");
+	if (argc != 4)
+	{
+		cout << "Вы не указали режим работы программы, путь до расшифрованного и зашифрованного текстовых файлов в аргументах командной строки. Работа программы завершена.";
+		return -1;
+	}
+	// Аргументы идут так:
+	// 0 - сам файл, который вызываем (наша программа), он нам не нужен;
+	// 1 (programMode) - режим работы программы (decode/encode);
+	// 2 (decodedFilePath) - путь к расшифрованному файлу;
+	// 3 (encodedFilePath) - путь к зашифрованному файлу;
+	char* programMode = argv[1];
+	char* decodedFilePath = argv[2];
+	char* encodedFilePath = argv[3];
+
+	// если какой-то из файлов не существует, то останавливаем работу программы
+	if (!FileIsExist(decodedFilePath) || !FileIsExist(encodedFilePath))
+	{
+		cout << "Какой-то из файлов не существует, проверьте правильность указанных путей:\r\n";
+		cout << "Путь до расшифрованного файла: " << decodedFilePath << "\r\n";
+		cout << "Путь до зашифрованного файла: " << encodedFilePath << "\r\n";
+		return -1;
+	}
+	else 
+	{
+		cout << "Файлы проверены:\r\n";
+		cout << "Путь до расшифрованного файла: " << decodedFilePath << "\r\n";
+		cout << "Путь до зашифрованного файла: " << encodedFilePath << "\r\n";
+	}
+
+	if (programMode != decodeMode && programMode != encodeMode)
+	{
+		cout << "Указан неверный режим работы программы (" << programMode << "), может быть лишь " << decodeMode << " или " << encodeMode;
+		return -1;
+	}
+	else if (programMode == decodeMode)
+	{
+		// получаем зашифрованный текст из файла
+		string encodedText = ReadTextFromFile(encodedFilePath);
+
+		// объявляем алгоритм шифрования
+		MyCryptoAlgoritm algoritm(16, 7);
+
+		// получаем расшифрованный текст благодаря алгоритму
+		string decodedText = algoritm.DecryptText(encodedText);
+
+		// записываем полученный расшифрованный текст в файл
+		WriteTextToFile(decodedFilePath, decodedText);
+		cout << "Текст успешно расширован и записан в " << decodedFilePath;
+	}
+	else if (programMode == encodeMode)
+	{
+		// получаем расшифрованный текст из файла
+		string decodedText = ReadTextFromFile(decodedFilePath);
+
+		// объявляем алгоритм шифрования
+		MyCryptoAlgoritm algoritm(16, 7);
+
+		// получаем зашифрованный текст благодаря алгоритму
+		string encodedText = algoritm.EncryptText(decodedText);
+
+		// записываем полученный зашифрованный текст в файл
+		WriteTextToFile(encodedFilePath, encodedText);
+		cout << "Текст успешно заширован и записан в " << encodedFilePath;
+	}
+	return 0;
 }
 
-int main() {
-    setlocale(LC_ALL, "rus");
-    ofstream inputText("inputText.txt");
-    if (!inputText)
-    {
-        cout << "Ошибка открытия файла" << endl;
-        return -1;
-    }
-    else
-    {
-        cout << "Файл открыт и вы можете ввести текст," << endl
-             << "с которым хотите работать." << endl;
-    }
-    string text;
-    getline(cin, text);  //  получение начального текста
-    inputText << text;
-    cout << endl;
-    inputText.close();
+bool FileIsExist(string filePath)
+{
+	bool isExist = false;
+	ifstream fin(filePath.c_str());
 
-    ofstream encrypt("Encrypted.txt");  //  Encrypted
-    vector<string> vec;
-    const unsigned int BlockSizeData = 16;
-    fill_blocks(vec, text, BlockSizeData);  
-    int key[2];
-    string stringKey[2];
-    for (string& i : vec)
-    {
-        cryptedkey(BlockSizeData, key[0], stringKey[0]);  //  создаем две части гаммы
-        cryptedkey(BlockSizeData, key[1], stringKey[1]);
-        string mainKey = stringKey[0] + stringKey[1];  //  полная гамма
-        cout << "Используемый ключ: " << key << endl;
-        for (int j = 0; j < i.length(); ++j)
-        {
-            i[j] ^= mainKey[j];  //  каждый байт гаммы побитово XOR 
-        }
-    }
-    const unsigned int ShiftSize = 7;
-    for (string& i : vec)
-    {
-        string byte = createByte(i);  //  представляем в байтовом виде
-        shifting(byte, ShiftSize, ">>");  //  выполняем сдвиг
-        i = byte;
-    }
-    for (const string& i : vec)
-    {
-        encrypt << i;  //  выводим в файл
-    }
-    encrypt.close();
+	if (fin.is_open())
+		isExist = true;
 
-    ofstream decrypt("Decrypted.txt"); //  Decrypting
-    for (string& i : vec)
-    {
-        string byte = createByte(i);  //  представляем в байтовом виде
-        shifting(byte, ShiftSize, "<<");  //  сдвигаем в обратную строну на shift
-        i = byte;
-    }
-    for (string& i : vec)
-    {
-        cryptedkey(BlockSizeData, key[0], stringKey[0]);  //  создаем туже гамму 
-        cryptedkey(BlockSizeData, key[1], stringKey[1]);
-        string mainKey = stringKey[0] + stringKey[1];
-        for (int j = 0; j < i.length(); ++j)
-        {
-            i[j] ^= mainKey[j];  //  каждый байт гаммы побитово XOR
-        }
-    }
-    for (const string& i : vec)
-    {
-        decrypt << i;  //  выводим в файл
-    }
-    return 0;
+	fin.close();
+	return isExist;
+}
+
+string ReadTextFromFile(char* path)
+{
+	ifstream readStream(path);
+	string line;
+	string result;
+	if (readStream.is_open())
+	{
+		while (getline(readStream, line))
+		{
+			result += line;
+		}
+	}
+	readStream.close();
+	return result;
+}
+
+void WriteTextToFile(char* path, string text)
+{
+	ofstream writeStream(path);
+	if (writeStream.is_open())
+	{
+		writeStream << text;
+	}
+	writeStream.close();
 }
