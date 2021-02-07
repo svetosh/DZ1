@@ -21,8 +21,7 @@ void readFile(vector<Block>& data, string& inputName)
         iread.read(reinterpret_cast<char*>(&buffer), sizeof(buffer));
         if(!iread.eof())
         data.push_back(buffer);
-        for (int i = 0; i < 16; i++)
-            buffer.data[i] = '\0';
+        [&buffer]() { for (int i = 0; i < 16; i++) buffer.data[i] = '\0'; };
     }
     iread.close();
 }
