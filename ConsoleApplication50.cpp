@@ -42,7 +42,7 @@ void gamming(vector<Block>& b, int& key)
     key = rand();
     for (int i = 0; i < b.size(); i++)
     {
-        for (int j = 0; j < sizeof(b); j++)
+        for (int j = 0; j < 16; j++)
         {
             b[i].data[j] = b[i].data[j] ^ rand();
         }
