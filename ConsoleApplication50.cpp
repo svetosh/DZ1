@@ -19,19 +19,38 @@ void readFile(vector<Block>& data, string& inputName)
     while (!iread.eof())
     {
         iread.read(reinterpret_cast<char*>(&buffer), sizeof(buffer));
-        if(!iread.eof())
-        data.push_back(buffer);
-        [&buffer]() { for (int i = 0; i < 16; i++) buffer.data[i] = '\0'; };
+            data.push_back(buffer);
+                for (char i = 0; i < 16; i++) 
+                    buffer.data[i] = '\0';
     }
     iread.close();
 }
 
-void writeFile(vector<Block>& data, string& outputFile)
+void writeFile(vector<Block>& data, string& outputFile, int& fix)
 {
     ofstream owrite(outputFile, ios::binary);
-    for (int i = 0; i < data.size(); i++)
+
+    for (int i = 0; i < data.size() - 2 * fix; i++)
     {
         owrite.write(reinterpret_cast<char*>(&data[i]), sizeof(data[i]));
+    }
+
+    if (fix == 1) 
+    {
+        uint64_t last_index = data.size() - 2;
+        for (uint32_t i = 0; i < 16; ++i) 
+        {
+            if (data[last_index].data[i] != '\0')
+            {
+                owrite.write(reinterpret_cast<char*>
+                    (&data[last_index].data[i]),
+                    sizeof(data[last_index].data[i]));
+            }
+            else
+            {
+                break;
+            }
+        }
     }
     owrite.close();
 }
@@ -54,9 +73,10 @@ void operator<<(Block& b, int& shift)
     unsigned char* d = new unsigned char[16];
     for (int i = 0; i < 16; i++)
         d[i] = b.data[i];
+
     for (int i = 0; i < 16; i++)
     {
-        b.data[i] = (d[i] << shift) | (d[(i + 1) % 16] >> (16 - shift));
+        b.data[i] = (d[i] << shift) | (d[(i + 1) % 16] >> (8 - shift));
     }
     delete[] d;
 }
@@ -66,14 +86,15 @@ void operator>>(Block& b, int& shift)
     unsigned char* d = new unsigned char[16];
     for (int i = 0; i < 16; i++)
         d[i] = b.data[i];
+
     for (int i = 0; i < 16; i++)
     {
-        b.data[i] = (d[i] >> shift) | (d[(i + 15) % 16] << (16 - shift));
+        b.data[i] = (d[i] >> shift) | (d[(i + 15) % 16] << (8 - shift));
     }
     delete[] d;
 }
 
-void shifting(vector<Block>& b, int& shift) 
+void shifting(vector<Block>& b, int& shift)
 {
     char where = 1;
     if (shift < 0)
@@ -95,31 +116,23 @@ void shifting(vector<Block>& b, int& shift)
 void coding(string& inputName, string& outputName, int& key, int shift)
 {
     vector<Block> b;
+    int fix = 0;
     readFile(b, inputName);
-    cout << "1";
     srand(key);
-    cout << "2";
     gamming(b, key);
-    cout << "3";
     shifting(b, shift);
-    cout << "4";
-    writeFile(b, outputName);
-    cout << "5";
+    writeFile(b, outputName, fix);
 }
 
 void decoding(string& inputName, string& outputName, int& key, int shift)
 {
     vector<Block> b;
+    int fix = 1;
     readFile(b, inputName);
-    cout << "1";
     shifting(b, shift);
-    cout << "2";
     srand(key);
-    cout << "3";
     gamming(b, key);
-    cout << "4";
-    writeFile(b, outputName);
-    cout << "5";
+    writeFile(b, outputName, fix);
 }
 
 int main(int argc, char* argv[])
@@ -143,7 +156,7 @@ int main(int argc, char* argv[])
     {
         coding(inputFile, outputFile, key, -7);
     }
-    else if(command == "decode")
+    else if (command == "decode")
     {
         decoding(inputFile, outputFile, key, 7);
     }
